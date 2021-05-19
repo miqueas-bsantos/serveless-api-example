@@ -1,0 +1,64 @@
+service: concil-external-api
+
+frameworkVersion: ">=1.1.0 <2.0.0"
+
+# You can pin your service to only deploy with a specific Serverless version
+# Check out our docs for more details
+# frameworkVersion: "=X.X.X"
+
+provider:
+  name: aws
+  runtime: python3.8
+  stage: dev
+  region: us-east-1
+  profile: miqueas-santos
+  environment:
+    ACQUIRERS_TABLE: "acquirers-table-${opt:stage, self:provider.stage}"
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - dynamodb:Query
+        - dynamodb:Scan
+        - dynamodb:GetItem
+        - dynamodb:PutItem
+      Resource: "*"  
+
+resources:
+  Resources:
+    acquirersDynamoDbTable:
+      Type: 'AWS::DynamoDB::Table'
+      DeletionPolicy: Retain
+      Properties:
+        AttributeDefinitions:
+          -
+            AttributeName: "id"
+            AttributeType: "S"   
+        KeySchema:
+          -
+            AttributeName: "id"
+            KeyType: "HASH"
+        ProvisionedThroughput:
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1
+        StreamSpecification:
+          StreamViewType: "NEW_AND_OLD_IMAGES"
+        TableName: ${self:provider.environment.ACQUIRERS_TABLE}
+
+functions:
+  acquirers:
+    handler: api/handler.acquirers
+    memorySize: 128
+    description: Return all acquirers availables in Concil System
+    events:
+      - http: 
+          path: acquirers
+          method: get
+          
+  insert_acquirer:
+    handler: api/handler.insert_acquirer
+    memorySize: 128
+    description: insert acquirers in Concil System
+    events:
+      - http: 
+          path: acquirers
+          method: post
